@@ -7,7 +7,13 @@ export const runtime = 'nodejs';
 
 interface RoomInfo {
     host_uid: string;
-    [key: string]: any;
+    [key: string]: string | number | boolean;
+}
+
+interface Player {
+    exited: boolean;
+    name: string;
+    [key: string]: string | number | boolean;
 }
 
 export async function POST(req: NextRequest) {
@@ -36,11 +42,11 @@ export async function POST(req: NextRequest) {
 
         // Get all players
         const playerKey = `room:${gameId}:players`;
-        const players = await kv.hgetall(playerKey) || {};
+        const players = await kv.hgetall(playerKey) as Record<string, Player> || {};
 
         const activePlayers = Object.entries(players)
-            .filter(([, player]: [string, any]) => !player.exited)
-            .map(([userId]: [string, any]) => userId);
+            .filter(([, player]) => !player.exited)
+            .map(([userId]) => userId);
 
         // Create leaderboard entries for all players
         for (const userId of activePlayers) {

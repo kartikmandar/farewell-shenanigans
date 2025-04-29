@@ -2,9 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  experimental: {
-    serverExternalPackages: ['@prisma/client', 'bcryptjs']
-  },
+  transpilePackages: ['@prisma/client', 'bcryptjs'],
   webpack: (config) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
