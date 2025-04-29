@@ -50,35 +50,57 @@ export const usePresence = () => {
     useEffect(() => {
         if (!isConnected) return;
 
-        // Subscribe to the presence channel
-        const channel = pusher.subscribe('presence-global');
+        // Subscribe to a public channel
+        const channel = pusher.subscribe('global');
 
         // Handle user count update event
         channel.bind('user-count', (data: { count: number }) => {
             setUserCount(data.count);
         });
 
-        // Request current count via API
-        const fetchUserCount = async () => {
+        // Request current count via API and update presence
+        const updatePresence = async () => {
             try {
-                const response = await fetch('/api/presence');
+                // Generate a client ID if needed
+                const clientId = localStorage.getItem('client_id') || `client_${Math.random().toString(36).substring(2, 9)}`;
+                localStorage.setItem('client_id', clientId);
+
+                // Post presence update
+                const response = await fetch('/api/presence', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ userId: clientId }),
+                });
+
                 if (response.ok) {
                     const data = await response.json();
                     setUserCount(data.count);
                 }
             } catch (err) {
-                console.error('Error fetching user count:', err);
+                console.error('Error updating presence:', err);
+
+                // Fallback to GET request if POST fails
+                try {
+                    const response = await fetch('/api/presence');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setUserCount(data.count);
+                    }
+                } catch (err) {
+                    console.error('Error fetching user count:', err);
+                }
             }
         };
 
-        fetchUserCount();
-
-        // Set up polling every 10s
-        const interval = setInterval(fetchUserCount, 10000);
+        // Update presence immediately and set interval
+        updatePresence();
+        const interval = setInterval(updatePresence, 30000); // Every 30 seconds
 
         return () => {
             // Unsubscribe when component unmounts
-            pusher.unsubscribe('presence-global');
+            pusher.unsubscribe('global');
             clearInterval(interval);
         };
     }, [pusher, isConnected]);

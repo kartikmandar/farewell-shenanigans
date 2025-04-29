@@ -1,36 +1,55 @@
-import { kv } from '@vercel/kv';
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
 import { getPusherServer } from '@/lib/pusher-server';
+
+// Store user presence in memory (not ideal for production, but works for demo without KV)
+type PresenceData = {
+    [userId: string]: {
+        lastSeen: number;
+    };
+};
+
+// Global variable for presence data
+let presenceData: PresenceData = {};
+
+// Function to clean up stale presence data
+const cleanupPresenceData = () => {
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+    const newPresenceData: PresenceData = {};
+
+    Object.entries(presenceData).forEach(([userId, data]) => {
+        if (data.lastSeen > fiveMinutesAgo) {
+            newPresenceData[userId] = data;
+        }
+    });
+
+    presenceData = newPresenceData;
+    return Object.keys(presenceData).length;
+};
 
 export const runtime = 'nodejs';
 export const revalidate = 5; // Revalidate every 5 seconds
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getServerSession();
+        const { userId } = await req.json();
 
-        if (!session?.user?.id) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        if (!userId) {
+            return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
         }
 
-        // Update presence timestamp
-        const userId = session.user.id;
-        await kv.hset('presence', { [userId]: Date.now() });
+        // Update user's last seen timestamp
+        presenceData[userId] = {
+            lastSeen: Date.now()
+        };
 
-        // Get all presence data
-        const allPresence = await kv.hgetall('presence') || {};
+        // Count active users
+        const count = cleanupPresenceData();
 
-        // Calculate current online users (active in last 5 minutes)
-        const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-        const onlineUsers = Object.values(allPresence).filter(
-            (timestamp: any) => timestamp > fiveMinutesAgo
-        );
+        // Broadcast the updated count
+        const pusher = getPusherServer();
+        pusher.trigger('global', 'user-count', { count });
 
-        // Update online count
-        await kv.set('online:count', onlineUsers.length);
-
-        return NextResponse.json({ count: onlineUsers.length });
+        return NextResponse.json({ count });
     } catch (error) {
         console.error('Error updating presence:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -39,19 +58,13 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
     try {
-        // Get or initialize user count
-        let count = await kv.get('online_users_count') as number;
+        // Count active users after cleanup
+        const count = cleanupPresenceData();
 
-        if (count === null) {
-            count = 0;
-            await kv.set('online_users_count', 0);
-        }
-
-        // Broadcast the count
+        // Broadcast count
         const pusher = getPusherServer();
-        pusher.trigger('presence-global', 'user-count', { count });
+        pusher.trigger('global', 'user-count', { count });
 
-        // Return the count
         return NextResponse.json({ count });
     } catch (error) {
         console.error('Error handling presence:', error);
