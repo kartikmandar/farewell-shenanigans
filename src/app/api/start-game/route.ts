@@ -5,6 +5,11 @@ import { getServerSession } from 'next-auth';
 
 export const runtime = 'nodejs';
 
+interface RoomInfo {
+    host_uid: string;
+    [key: string]: any;
+}
+
 export async function POST(req: NextRequest) {
     try {
         const session = await getServerSession();
@@ -20,7 +25,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Check if user is host
-        const roomInfo = await kv.get(`room:${gameId}`);
+        const roomInfo = await kv.get(`room:${gameId}`) as RoomInfo | null;
 
         if (!roomInfo || roomInfo.host_uid !== session.user.id) {
             return NextResponse.json({ error: 'Only the host can start the game' }, { status: 403 });
