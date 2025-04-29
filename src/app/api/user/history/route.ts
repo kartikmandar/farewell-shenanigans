@@ -2,7 +2,7 @@ import { sql } from '@vercel/postgres';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function GET() {
     try {

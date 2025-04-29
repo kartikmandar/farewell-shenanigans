@@ -2,6 +2,8 @@ import { sql } from '@vercel/postgres';
 import NextAuth from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 
+export const runtime = 'nodejs';
+
 const handler = NextAuth({
     providers: [
         GoogleProvider({
@@ -16,29 +18,45 @@ const handler = NextAuth({
     },
     callbacks: {
         async jwt({ token, account, profile }) {
-            // Store the user in the database when they first sign in
-            if (account && profile) {
-                const existingUser = await sql`
-          SELECT * FROM users WHERE email = ${token.email}
-        `;
+            try {
+                // Store the user in the database when they first sign in
+                if (account && profile) {
+                    try {
+                        const existingUser = await sql`
+                            SELECT * FROM users WHERE email = ${token.email}
+                        `;
 
-                if (existingUser.rowCount === 0) {
-                    // Create a new user
-                    await sql`
-            INSERT INTO users (id, email, display_name)
-            VALUES (${token.sub}, ${token.email}, ${token.name})
-          `;
+                        if (existingUser.rowCount === 0) {
+                            // Create a new user
+                            await sql`
+                                INSERT INTO users (id, email, display_name)
+                                VALUES (${token.sub}, ${token.email}, ${token.name})
+                            `;
+                        }
+                    } catch (error) {
+                        console.error('Error creating user:', error);
+                        // Continue with authentication even if database operations fail
+                    }
                 }
-            }
 
-            // Get the latest user data including gameplay_id
-            const user = await sql`
-        SELECT * FROM users WHERE id = ${token.sub}
-      `;
+                // Get the latest user data including gameplay_id
+                try {
+                    const user = await sql`
+                        SELECT * FROM users WHERE id = ${token.sub}
+                    `;
 
-            if (user.rowCount > 0) {
-                token.gameplay_id = user.rows[0].gameplay_id;
-                token.display_name = user.rows[0].display_name;
+                    if (user && user.rowCount && user.rowCount > 0) {
+                        token.gameplay_id = user.rows[0].gameplay_id;
+                        token.display_name = user.rows[0].display_name;
+                    }
+                } catch (error) {
+                    console.error('Error fetching user data:', error);
+                    // Set default values if database access fails
+                    if (!token.gameplay_id) token.gameplay_id = '';
+                    if (!token.display_name) token.display_name = token.name || '';
+                }
+            } catch (error) {
+                console.error('Error in jwt callback:', error);
             }
 
             return token;
@@ -46,8 +64,8 @@ const handler = NextAuth({
         async session({ session, token }) {
             if (session.user) {
                 session.user.id = token.sub as string;
-                session.user.gameplay_id = token.gameplay_id as string;
-                session.user.display_name = token.display_name as string;
+                session.user.gameplay_id = (token.gameplay_id as string) || '';
+                session.user.display_name = (token.display_name as string) || session.user.name || '';
             }
             return session;
         },

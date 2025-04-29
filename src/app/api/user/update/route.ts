@@ -2,6 +2,8 @@ import { sql } from '@vercel/postgres';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 
+export const runtime = 'nodejs';
+
 export async function POST(req: NextRequest) {
     try {
         const session = await getServerSession();
