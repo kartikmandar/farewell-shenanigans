@@ -8,6 +8,11 @@ export const getSocket = (): Socket => {
         socket = io({
             path: '/api/socket',
             autoConnect: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            timeout: 20000,
+            transports: ['polling', 'websocket']
         });
     }
     return socket;

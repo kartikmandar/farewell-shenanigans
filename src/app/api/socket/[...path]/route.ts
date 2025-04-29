@@ -2,6 +2,8 @@ import { Server, Socket } from 'socket.io';
 import { kv } from '@vercel/kv';
 import { sql } from '@vercel/postgres';
 
+export const runtime = 'nodejs';
+
 // Rate limiter implementation
 const RATE_LIMIT_DURATION = 1000; // 1 second
 const rateLimit = new Map<string, number>();
@@ -42,6 +44,17 @@ interface PlayerInfo {
 // WebSocket handler
 const ioHandler = async (req: Request) => {
     try {
+        if (req.method === 'OPTIONS') {
+            return new Response('', {
+                status: 200,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+                }
+            });
+        }
+
         // Extract path from URL
         const { pathname } = new URL(req.url);
         const path = pathname.split('/api/socket/')[1] || '';
@@ -69,7 +82,9 @@ const ioHandler = async (req: Request) => {
                 cors: {
                     origin: process.env.NEXT_PUBLIC_SITE_URL || '*',
                     methods: ['GET', 'POST'],
+                    credentials: true
                 },
+                transports: ['polling', 'websocket']
             });
 
             // @ts-ignore

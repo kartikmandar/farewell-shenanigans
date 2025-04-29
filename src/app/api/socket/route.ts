@@ -44,6 +44,17 @@ interface PlayerInfo {
 // WebSocket handler
 const ioHandler = async (req: Request) => {
     try {
+        if (req.method === 'OPTIONS') {
+            return new Response('', {
+                status: 200,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+                }
+            });
+        }
+
         // Extract path from URL
         const { pathname } = new URL(req.url);
         const path = pathname.split('/api/socket/')[1] || '';
@@ -71,7 +82,9 @@ const ioHandler = async (req: Request) => {
                 cors: {
                     origin: process.env.NEXT_PUBLIC_SITE_URL || '*',
                     methods: ['GET', 'POST'],
+                    credentials: true
                 },
+                transports: ['polling', 'websocket']
             });
 
             // @ts-ignore
