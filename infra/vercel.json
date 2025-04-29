@@ -1,0 +1,11 @@
+{
+    "regions": [
+        "sfo1"
+    ],
+    "functions": {
+        "src/app/api/socket/[...path]/route.ts": {
+            "runtime": "nodejs18.x",
+            "maxDuration": 60
+        }
+    }
+}
