@@ -2,11 +2,5 @@
     "version": 2,
     "regions": [
         "sfo1"
-    ],
-    "functions": {
-        "src/app/api/socket/**/*.ts": {
-            "runtime": "@vercel/node@18.x",
-            "maxDuration": 60
-        }
-    }
+    ]
 }
