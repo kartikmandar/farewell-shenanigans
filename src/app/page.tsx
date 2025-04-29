@@ -19,7 +19,7 @@ import {
   Stack,
   useTheme
 } from '@mui/material';
-import { usePresence } from '@/lib/socket';
+import { usePresence } from '@/lib/pusher';
 import GameplayIdModal from '@/components/GameplayIdModal';
 import Link from 'next/link';
 

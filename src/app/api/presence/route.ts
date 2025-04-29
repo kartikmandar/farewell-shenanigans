@@ -1,8 +1,10 @@
 import { kv } from '@vercel/kv';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { getPusherServer } from '@/lib/pusher-server';
 
 export const runtime = 'nodejs';
+export const revalidate = 5; // Revalidate every 5 seconds
 
 export async function POST(req: NextRequest) {
     try {
@@ -31,6 +33,28 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ count: onlineUsers.length });
     } catch (error) {
         console.error('Error updating presence:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
+
+export async function GET(req: NextRequest) {
+    try {
+        // Get or initialize user count
+        let count = await kv.get('online_users_count') as number;
+
+        if (count === null) {
+            count = 0;
+            await kv.set('online_users_count', 0);
+        }
+
+        // Broadcast the count
+        const pusher = getPusherServer();
+        pusher.trigger('presence-global', 'user-count', { count });
+
+        // Return the count
+        return NextResponse.json({ count });
+    } catch (error) {
+        console.error('Error handling presence:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 } 

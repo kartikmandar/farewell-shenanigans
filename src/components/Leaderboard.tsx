@@ -14,7 +14,7 @@ import {
     Chip,
     CircularProgress
 } from '@mui/material';
-import { useScores } from '@/lib/socket';
+import { useScores } from '@/lib/pusher';
 import { useSession } from 'next-auth/react';
 
 type LeaderboardEntry = {
@@ -60,7 +60,7 @@ export default function Leaderboard({ gameId, sessionId, title = 'Leaderboard' }
         fetchLeaderboard();
     }, [gameId, sessionId]);
 
-    // Update scores from socket
+    // Update scores from Pusher
     useEffect(() => {
         if (Object.keys(scores).length > 0) {
             setLeaderboard(prev =>

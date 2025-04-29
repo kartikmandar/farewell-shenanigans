@@ -2,6 +2,7 @@ import { sql } from '@vercel/postgres';
 import { kv } from '@vercel/kv';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { getPusherServer } from '@/lib/pusher-server';
 
 export const runtime = 'nodejs';
 
@@ -55,6 +56,10 @@ export async function POST(req: NextRequest) {
         VALUES (${gameId}, ${sessionId}, ${userId}, 0)
       `;
         }
+
+        // Notify clients that the game has started
+        const pusher = getPusherServer();
+        pusher.trigger(`game-${gameId}`, 'game-started', { gameId, sessionId });
 
         return NextResponse.json({ success: true, sessionId, players: activePlayers });
     } catch (error) {

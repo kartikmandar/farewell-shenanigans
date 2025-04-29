@@ -20,7 +20,7 @@ import {
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
-import { useRoom } from '@/lib/socket';
+import { useRoom } from '@/lib/pusher';
 
 type GameLobbyProps = {
     gameId: string;
@@ -33,6 +33,9 @@ export default function GameLobby({ gameId, gameName, gameDescription }: GameLob
     const router = useRouter();
     const userId = session?.user?.id;
 
+    // Store the host ID separately
+    const [hostId, setHostId] = useState<string | null>(null);
+
     const {
         players,
         isHost,
@@ -41,6 +44,13 @@ export default function GameLobby({ gameId, gameName, gameDescription }: GameLob
         error,
         startGame
     } = useRoom(gameId, userId || '');
+
+    // Update hostId when room info changes
+    useEffect(() => {
+        if (isHost && userId) {
+            setHostId(userId);
+        }
+    }, [isHost, userId]);
 
     // Redirect to game when it starts
     useEffect(() => {
@@ -117,7 +127,7 @@ export default function GameLobby({ gameId, gameName, gameDescription }: GameLob
                                             : 'Waiting...'
                                     }
                                 />
-                                {playerId === players[Object.keys(players)[0]]?.host_uid && (
+                                {playerId === hostId && (
                                     <Chip size="small" label="Host" color="primary" variant="outlined" />
                                 )}
                             </ListItem>
